@@ -1,0 +1,6 @@
+- FINISH THE PRE-REWORK MAIN CLASS BEFORE DOING THE REST
+
+- add checks for if account isAdmin with menus, skip if so
+- implement isAdmin setter
+-  add option to create a new admin into create account menu
+- 	add ability for admin menu to deposit and remove money from specific accounts

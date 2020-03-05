@@ -1,0 +1,541 @@
+/* Jinel Johnson (N01422831)
+ * Purpose of Program: User is prompted to enter a valid customer ID and PIN to access their account.
+ * User will then be prompted with various account options. */
+
+import java.util.*;
+
+class ATMSimulation {
+
+    public static void main(String[] args) {
+        int[] accIds = {9801, 2345, 3025, 1024, 4096, 6021, 8192, 5768, 7113, 1497};
+        ArrayList<Account> accounts = new ArrayList<>();
+
+        // Admin account credentials
+        accounts.add(new Account(0));
+        accounts.get(0).setPin("ligma");
+
+        // Gives values of accIds array to the account data fields
+        for (int accId : accIds) {
+            accounts.add(new Account(accId));    // Creates object in the array with specified ID
+        }
+
+        // Welcomes user and requests correct ID and PIN infinitely
+        boolean notShutDown = true;
+        while (notShutDown) {
+            welcomeScreen(accounts);
+        }
+    }
+
+    /* Linear search method
+     * Finds matching ID and returns its index */
+    private static int linearSearch(ArrayList<Account> accounts, int inputtedId) {
+        for(int i = 0; i < accounts.size(); i++) {
+            if(inputtedId == accounts.get(i).getId())
+                return i;
+        }
+        return -1;
+    }
+
+    /* Welcome screen method
+     * Prints welcome screen and requests login info */
+    private static void welcomeScreen(ArrayList<Account> accounts) {
+        int inputtedId, i;
+        Scanner input;
+
+        // Acquires ID
+        System.out.print("\n\n\n**********************************************"
+                + "\n****************** WELCOME! ******************"
+                + "\n**********************************************"
+                + "\nEnter customer ID: ");
+
+        while(true) {
+            try {
+                input = new Scanner(System.in);
+                inputtedId = input.nextInt();
+                // Retrieves index of ID if correct
+                i = linearSearch(accounts, inputtedId);
+
+                // Breaks to request PIN if non-admin ID is provided
+                if (linearSearch(accounts, inputtedId) == i && i > 0) {
+                    userLogin(accounts, i, input);
+                } else if (i == 0) {
+                    // Secret admin ID is 0. Requests admin password instead of pin if entered
+                    adminLogin(accounts, i, input);
+                } else {
+                    System.out.print("Invalid ID. Please try again: ");
+                    continue;
+                }
+            } catch (InputMismatchException e) {
+                System.out.print("Only NUMBER values are needed. Please try again: ");
+                continue;
+            }
+            break;
+        }
+
+
+    }
+
+    private static void adminLogin(ArrayList<Account> accounts, int i, Scanner input) {
+        System.out.print("Enter administrator password: ");
+        String inputtedPass = input.next();
+
+        if (inputtedPass.equals(accounts.get(0).getPin())) {
+            // Invokes hidden admin menu if password is correct
+            adminMenu(accounts, i);
+        } else if (!inputtedPass.equals(accounts.get(0).getPin())) {
+            /* Restarts to welcome screen if password is incorrect to discourage admin pass guessing.
+             * (Pseudo failsafe, can keep retrying login with admin ID) */
+            System.out.println("Invalid administrator password. Restarting...");
+            welcomeScreen(accounts);
+        }
+    }
+
+    private static void userLogin(ArrayList<Account> accounts, int i, Scanner input) {
+        String inputtedPin;
+
+        // Acquires PIN
+        System.out.print("Enter PIN (Default = 0000): ");
+        while(true) {
+            inputtedPin = input.next();
+            if(inputtedPin.equals(accounts.get(i).getPin())) {
+                mainMenu(accounts, i);
+                break;
+            } else System.out.print("Invalid PIN. Please try again: ");
+        }
+    }
+
+    /* Main menu controls
+     * Prints menu options and performs actions based on selection */
+    private static void mainMenu(ArrayList<Account> accounts, int i) {
+        int inputtedOpt;
+        double bal, amount;
+        Scanner input;
+
+        // Prints the main menu (0 for Admin Menu)
+        System.out.print("\n**********************************************"
+                + "\n***************** MAIN MENU ******************"
+                + "\n**********************************************"
+                + "\n\t\t\t\t1: Check balance" + "\n\t\t\t\t2: Withdraw" + "\n\t\t\t\t3: Deposit"
+                + "\n\t\t\t\t4: Change PIN" + "\n\t\t\t\t5: Logout"
+                + "\n**********************************************"
+                + "\nSelect between options 1 and 5: ");
+
+        // Requests option input and ensures only 1-6 are valid
+        while(true) {
+            try {
+                input = new Scanner(System.in);
+                inputtedOpt = input.nextInt();
+                if(inputtedOpt < 1 || inputtedOpt > 5) {
+                    System.out.print("Invalid option.\nPlease select between options 1 and 5: ");
+                    continue;
+                }
+                break;
+            } catch(InputMismatchException e) {
+                System.out.print("Only NUMBER values are needed. Please try again: ");
+            }
+        }
+
+        // Acquires the balance for the matching account
+        bal = accounts.get(i).getBalance();
+
+        // Performs action based off inputted choice
+        switch(inputtedOpt) {
+            case 1:        // Checks balance
+                System.out.println("**********************************************");
+                System.out.printf("Your balance is: $%.2f\n", bal);
+                System.out.println("Your account is in " + accounts.get(i).accountStanding());
+                mainMenu(accounts, i);
+                break;
+
+            case 2:        // Withdraws and prints remaining balance
+                // Checks if account is in good standing. If not, returns to main menu.
+                if (accounts.get(i).accountStanding().equals("Bad Standing")) {
+                    System.out.println("\nYour account must be in good standing to make withdrawals.");
+                    mainMenu(accounts, i);
+                    break;
+                }
+
+                System.out.println("**********************************************");
+                System.out.print("Enter withdrawal amount: $ ");
+
+                // Requests valid withdrawal value
+                while (true) {
+                    try {
+                        input = new Scanner(System.in);
+                        amount = input.nextDouble();
+
+                        if (amount <= 0) {
+                            System.out.print("Invalid amount. Please try again: ");
+                        } else if (bal - amount < -10000) {
+                            System.out.print("Insufficient funds. Please try again: ");
+                        } else break;
+                    } catch (InputMismatchException e) {
+                        System.out.print("Only NUMBER values are needed. Please try again: ");
+                    }
+                }
+
+                // Withdraws money
+                accounts.get(i).withdraw(amount);
+
+                // Prints new balance and then recursively calls menu
+                System.out.printf("\nWithdrew: $%.2f\nYour new balance is: $%.2f\n", amount, accounts.get(i).getBalance());
+                mainMenu(accounts, i);
+                break;
+
+            case 3:        // Deposits and prints new balance
+                System.out.println("**********************************************");
+                System.out.print("Enter deposit amount: $ ");
+
+                // Requests valid deposit value
+                while (true) {
+                    try {
+                        input = new Scanner(System.in);
+                        amount = input.nextDouble();
+                        if (amount <= 0) {
+                            System.out.print("Invalid amount. Please try again: ");
+                        } else break;
+                    } catch (InputMismatchException e) {
+                        System.out.print("Only NUMBER values are needed. Please try again: ");
+                    }
+                }
+
+                // Deposits money
+                accounts.get(i).deposit(amount);
+
+                // Prints new balance and then recursively calls menu
+                System.out.printf("\nDeposited: $%.2f\nYour new balance is: $%.2f\n", amount, accounts.get(i).getBalance());
+                mainMenu(accounts, i);
+                break;
+
+            case 4:     // Requests current PIN, then asks for and sets new PIN
+                System.out.print("**********************************************"
+                        + "\nEnter current PIN: ");
+                while (true) {
+                    input = new Scanner(System.in);
+                    String inputtedPin = input.next();
+
+                    // Ensures PIN is 4 number characters
+                    if (!inputtedPin.equals(accounts.get(i).getPin())) {
+                        System.out.print("Invalid PIN. Please try again: ");
+                        continue;
+                    } else {
+                        // Sets new PIN
+                        System.out.print("\nEnter new 4-digit PIN: ");
+                        inputtedPin = input.next();
+
+                        // Ensures PIN is 4 number characters
+                        while (!inputtedPin.matches("[0-9]{4}")) {
+                            System.out.print("New PIN must be 4 digits. Please try again: ");
+                            inputtedPin = input.next();
+                        }
+                    }
+
+                    // Sets account PIN to the new one
+                    accounts.get(i).setPin
+                            (inputtedPin);
+                    System.out.println("PIN successfully changed!");
+                    mainMenu(accounts, i);
+                    break;
+                }
+                break;
+
+            case 5:     // Prints exit message, breaks to reset login loop
+                System.out.print("\n**********************************************"
+                        + "\n************* HAVE A NICE DAY! ***************"
+                        + "\n**********************************************");
+                break;
+        }
+    }
+
+
+    private static void adminMenu(ArrayList<Account> accounts, int i) {
+        int inputtedOpt;
+        String inputtedPass;
+        Scanner input;
+
+        System.out.print("\n**********************************************"
+                + "\n***************** ADMIN MENU *****************"
+                + "\n**********************************************"
+                + "\n\t\t\t\t1: Show All Accounts" + "\n\t\t\t\t2: Add New Account" + "\n\t\t\t\t3: Delete Existing Account"
+                + "\n\t\t\t\t4: Change Admin PIN" + "\n\t\t\t\t5: Logout" + "\n\t\t\t\t0: Shut Down"
+                + "\n**********************************************"
+                + "\nSelect between options 0 and 5: ");
+
+        while(true) {
+            try {
+                input = new Scanner(System.in);
+                inputtedOpt = input.nextInt();
+                if(inputtedOpt < 0 || inputtedOpt > 5) {
+                    System.out.print("Invalid option.\nPlease select between options 1 and 5: ");
+                    continue;
+                }
+                break;
+            } catch(InputMismatchException e) {
+                System.out.print("Only NUMBER values are needed. Please try again: ");
+            }
+        }
+
+        switch (inputtedOpt) {
+            case 1:    // Shows details of all accounts
+                for (i = 1; i < accounts.size(); i++) {
+                    System.out.println("Owner: " + accounts.get(i).getFirstName() + " " + accounts.get(i).getLastName()
+                            + "\nID: " + accounts.get(i).getId()
+                            + " — PIN: " + accounts.get(i).getPin());
+                    System.out.printf("Balance: $%.2f (%s)\n\n",
+                            accounts.get(i).getBalance(), accounts.get(i).accountStanding());
+                }
+
+                // Recalls admin menu after account details are posted
+                adminMenu(accounts, i);
+                break;
+
+            case 2:    // Adds new account to accounts array, has $0 balance by default
+                // Will implement first and last name data fields another time
+                // Creates new account with random ID
+                System.out.println("\n**********************************************"
+                        + "\nENTER THE FOLLOWING DETAILS FOR NEW ACCOUNT"
+                        + "\n**********************************************");
+                accounts.add(new Account());
+
+                // Requests and binds accountholder's info
+                System.out.print("Accountholder's First name: ");
+                accounts.get(accounts.size() - 1).setFirstName(input.next());
+                // Ensures first name uses valid characters with at least 2 letters
+                while (!accounts.get(accounts.size() - 1).getFirstName().matches("[a-zA-Z]{2,36}")) {
+                    System.out.print("Only valid characters permitted. Please try again: ");
+                    accounts.get(accounts.size() - 1).setFirstName(input.next());
+                }
+
+                System.out.print("Accountholder's Last name: ");
+                accounts.get(accounts.size() - 1).setLastName(input.next());
+                // Ensures last name uses valid characters with at least 2 letters
+                while (!accounts.get(accounts.size() - 1).getLastName().matches("[a-zA-Z]{2,36}")) {
+                    System.out.print("Please enter at least 2 valid characters: ");
+                    accounts.get(accounts.size() - 1).setLastName(input.next());
+                }
+
+                System.out.print("4-digit PIN: ");
+                accounts.get(accounts.size() - 1).setPin(input.next());
+                // Ensures PIN is 4 number characters
+                while (!accounts.get(accounts.size() - 1).getPin().matches("[0-9]{4}")) {
+                    System.out.print("PIN must be 4 digits. Please try again: ");
+                    accounts.get(accounts.size() - 1).setPin(input.next());
+                }
+
+                // Prints that the account has been created
+                System.out.print("Account #" + accounts.get(accounts.size() - 1).getId() + " created!\n\n");
+
+                adminMenu(accounts, i);
+                break;
+
+            case 3:    // Removes specified account from database
+                // Prints formatted list of accounts
+                System.out.println("\nList of existing accounts:");
+                for (i = 1; i < accounts.size(); i++) {
+                    if (i % 8 == 0) {
+                        System.out.print(accounts.get(i).getId() + "\n");
+                    } else if (i == accounts.size() - 1) {
+                        System.out.print(accounts.get(i).getId());
+                    } else {
+                        System.out.print(accounts.get(i).getId() + ", ");
+                    }
+                }
+
+                System.out.println("\n\n- Enter 0 to exit -");
+                System.out.print("Enter account ID to erase: ");
+                int inputtedId;
+
+                // Conducts linear search to see if the ID matches existing list
+                while (true) {
+                    try {
+                        input = new Scanner(System.in);
+                        inputtedId = input.nextInt();
+
+                        if (inputtedId == 0) {
+                            adminMenu(accounts, i);
+                        } else if (linearSearch(accounts, inputtedId) == 0) {
+                            System.out.print("Cannot delete admin account. Please try again: ");
+                            continue;
+                        } else if(linearSearch(accounts, inputtedId) == -1) {
+                            System.out.print("Invalid account ID. Please try again: ");
+                            continue;
+                        }
+                    } catch(InputMismatchException ex) {
+                        System.out.print("Only NUMBER values are permitted.");
+                        continue;
+                    }
+                    break;
+                }
+
+                // Requests admin pass and checks if valid
+                System.out.println("Enter administrator password to confirm deletion: ");
+                inputtedPass = input.next();
+
+                while (!inputtedPass.equals(accounts.get(0).getPin())) {
+                    System.out.print("Invalid password. Please try again: ");
+                    inputtedPass = input.next();
+                }
+
+                // Removes account while accIdHolder keeps the ID for printing
+                int accIdHolder = accounts.get(linearSearch(accounts, inputtedId)).getId();
+                accounts.remove(linearSearch(accounts, inputtedId));
+                System.out.print("Account #" + accIdHolder + " successfully erased.\n\n");
+
+                // Recalls admin menu after account is erased
+                adminMenu(accounts, i);
+                break;
+
+            case 4:     // Requests current PIN, then asks for and sets new PIN
+                System.out.println("**********************************************");
+                System.out.print("Enter current administrator password: ");
+                input = new Scanner(System.in);
+                inputtedPass = input.next();
+
+                // Checks to see if PIN is valid
+                while (!inputtedPass.equals(accounts.get(0).getPin())) {
+                    System.out.print("Invalid password. Please try again: ");
+                    inputtedPass = input.next();
+                }
+
+                // Sets new admin password once correct one is entered
+                System.out.print("\nEnter new administrator password: ");
+                accounts.get(0).setPin(input.next());
+                System.out.println("Password successfully changed!");
+
+                adminMenu(accounts, i);
+                break;
+
+            case 5:     // Prints exit message, breaks to reset login loop
+                System.out.print("\n**********************************************"
+                        + "\n***************** GOODBYE! *******************"
+                        + "\n**********************************************");
+                break;
+
+            case 0:     // Exits program if shutdown is selected
+                System.out.print("\n**********************************************"
+                        + "\n************* SHUTTING DOWN... ***************"
+                        + "\n**********************************************");
+
+                input.close();
+                System.exit(0);
+        }
+    }
+}
+
+class Account {
+    /* pin is String to support multiple 0 values such as 0000
+     * real ATM would only have numpad, so no worrying about other characters  */
+    private int id;
+    private String pin, firstName, lastName;
+    private double balance;
+
+    /* no-arg constructor that generates a random 4-digit ID, default PIN and balance */
+    public Account() {
+        id = new Random().nextInt(9999) + 1000;
+        balance = 0;
+    }
+
+    // Constructor for preset IDs. Used for testing
+    public Account(int id) {
+        this.id = id;
+        pin = "0000";
+        lastName = "Doe";
+        setRandomFirstName();
+        setRandomBalance();
+    }
+
+    /* Determines account standing based off positive or negative balance */
+    public String accountStanding() {
+        if(balance >= 0)
+            return "Good Standing";
+        else
+            return "Bad Standing";
+    }
+
+    // Accessor methods
+    /* Returns ID */
+    public int getId() {
+        return id;
+    }
+
+    /* Returns PIN */
+    public String getPin() {
+        return pin;
+    }
+
+    /* Returns balance */
+    public double getBalance() {
+        return balance;
+    }
+
+    /* Returns first name */
+    public String getFirstName() {
+        return firstName;
+    }
+
+    /* Returns last name */
+    public String getLastName() {
+        return lastName;
+    }
+
+    // Mutator methods
+     /* Sets PIN of account */
+    public void setPin(String pin) {
+        this.pin = pin;
+    }
+
+    /* Gives account a random balance.
+     * For testing purposes */
+    public void setRandomBalance() {
+        Random randVal = new Random();
+
+        balance = (randVal.nextDouble() * 10000.1) * (randVal.nextBoolean() ? 1: -1);
+        balance = Math.floor(balance) * 100;
+        balance /= 100;
+
+
+        // Keeps account balance from exceeding max or min of +/- $10,000
+        if (balance > 10000) {
+            balance = 10000;
+        } else if (balance < -10000) {
+            balance = -10000;
+        }
+    }
+
+    /* Gives account the name "Jane" or "John" Doe.
+     * For testing purposes */
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    /* Gives account the first name "Jane" or "John".
+     * For testing purposes */
+    public void setRandomFirstName() {
+        Random randVal = new Random();
+
+        // Keeps account balance from exceeding max or min of +/- $10,000
+        if (randVal.nextBoolean()) {
+            firstName = "John";
+        } else {
+            firstName = "Jane";
+        }
+    }
+
+    /* Gives account the name "Jane" or "John" Doe.
+     * For testing purposes */
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    /* Withdraws specified amount */
+    public void withdraw(double amount) {
+        balance = Math.floor((balance - amount) * 100);
+        balance /= 100;
+    }
+
+    /* Deposits specified amount */
+    public void deposit(double amount) {
+        balance = Math.floor((balance + amount) * 100);
+        balance /= 100;
+    }
+}
